@@ -118,9 +118,11 @@ void BMSModuleManager::decodecan(CAN_message_t &msg, int debug)
     case 0x000:
       Id = 0;
       break;
+
     case 0x020:
       Id = 1;
       break;
+      
     case 0x030:
       Id = 2;
       break;

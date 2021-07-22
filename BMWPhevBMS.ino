@@ -67,6 +67,15 @@ const int OUT8 = 6;// output 8 - Low active
 const int led = 13;
 const int BMBfault = 11;
 
+// Unused Digital Pins:
+// 2 - 
+// 7 - CAN_A_EN
+// 8 - CAN_B_EN
+
+// Custom pins for CAN Bus Multiplex
+const int CAN_A_EN = 7;// CAN A Enable - High active
+const int CAN_B_EN = 8;// CAN B Enable - High active
+
 byte bmsstatus = 0;
 //bms status values
 #define Boot 0
@@ -206,9 +215,49 @@ CRC8 crc8;
 uint8_t checksum;
 const uint8_t finalxor [12] = {0xCF, 0xF5, 0xBB, 0x81, 0x27, 0x1D, 0x53, 0x69, 0x02, 0x38, 0x76, 0x4C};
 
-
-
 ADC *adc = new ADC(); // adc object
+
+
+//CAN Multiplex variables
+int currPstring = 1;
+
+
+// figure out next Pstring number
+int getNextPstring()
+{
+  if (currPstring < settings.Pstrings)
+  {
+    currPstring++;
+  }
+  else
+  {
+    currPstring = 1;
+  }
+  return currPstring;
+}
+
+// configure CAN multiplexer for correct Pstring
+void selectPstring(int no)
+{
+  switch (no)
+  {
+    case 1:
+      digitalWrite(CAN_A_EN, HIGH);
+      digitalWrite(CAN_B_EN, LOW);
+      break;
+
+    case 2:
+      digitalWrite(CAN_A_EN, LOW);
+      digitalWrite(CAN_B_EN, HIGH);
+      break;
+
+    default:
+      digitalWrite(CAN_A_EN, HIGH);
+      digitalWrite(CAN_B_EN, LOW);
+      //possibly raise error
+      break;
+  }
+}
 
 void loadSettings()
 {
@@ -300,6 +349,11 @@ void setup()
   pinMode(OUT8, OUTPUT); // pwm driver output
   pinMode(led, OUTPUT);
 
+  // CAN Multiplex pins
+  pinMode(CAN_A_EN, OUTPUT); // pwm driver output
+  pinMode(CAN_B_EN, OUTPUT); // pwm driver output
+
+
   analogWriteFrequency(OUT5, pwmfreq);
   analogWriteFrequency(OUT6, pwmfreq);
   analogWriteFrequency(OUT7, pwmfreq);
@@ -324,6 +378,8 @@ void setup()
 
   //if using enable pins on a transceiver they need to be set on
 
+  digitalWrite(CAN_A_EN, HIGH);
+  digitalWrite(CAN_B_EN, LOW);
 
   adc->adc0->setAveraging(16); // set number of averages
   adc->adc0->setResolution(16); // set bits of resolution
@@ -372,10 +428,10 @@ void setup()
   /////////////////
 
 
-  SERIALBMS.begin(612500); //Tesla serial bus
+  //SERIALBMS.begin(612500); //Tesla serial bus
   //VE.begin(19200); //Victron VE direct bus
 #if defined (__arm__) && defined (__SAM3X8E__)
-  serialSpecialInit(USART0, 612500); //required for Due based boards as the stock core files don't support 612500 baud.
+  //serialSpecialInit(USART0, 612500); //required for Due based boards as the stock core files don't support 612500 baud.
 #endif
 
   SERIALCONSOLE.println("Started serial interface to BMS.");
@@ -782,11 +838,17 @@ void loop()
     commandtime = millis();
     sendcommand();
   }
-
-
   if (millis() - looptime > 500)
   {
     looptime = millis();
+
+    // print messages only outside of MENU
+    if (menuload == 0)
+    {
+      SERIALCONSOLE.print("looptime[");SERIALCONSOLE.print(looptime);SERIALCONSOLE.println("]");
+      SERIALCONSOLE.print("currPstring[");SERIALCONSOLE.print(currPstring);SERIALCONSOLE.println("]");
+    }
+    
     bms.getAllVoltTemp();
     //UV  check
     if (settings.ESSmode == 1)
@@ -902,6 +964,9 @@ void loop()
     ////
 
     resetwdog();
+
+    /// switch to next Pstring
+    selectPstring(getNextPstring());
   }
   if (millis() - cleartime > 5000)
   {
@@ -949,6 +1014,7 @@ void loop()
     }
   }
 }
+
 
 void alarmupdate()
 {

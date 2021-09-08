@@ -217,10 +217,8 @@ const uint8_t finalxor [12] = {0xCF, 0xF5, 0xBB, 0x81, 0x27, 0x1D, 0x53, 0x69, 0
 
 ADC *adc = new ADC(); // adc object
 
-
 //CAN Multiplex variables
 int currPstring = 1;
-
 
 // figure out next Pstring number
 int getNextPstring()
@@ -241,6 +239,11 @@ void selectPstring(int no)
 {
   switch (no)
   {
+    case 0:
+      digitalWrite(CAN_A_EN, LOW);
+      digitalWrite(CAN_B_EN, LOW);
+      break;
+
     case 1:
       digitalWrite(CAN_A_EN, HIGH);
       digitalWrite(CAN_B_EN, LOW);
@@ -322,13 +325,11 @@ void loadSettings()
   settings.TempOff = 0; //Temperature offset
 }
 
-
 CAN_message_t msg;
 CAN_message_t inMsg;
 CAN_filter_t filter;
 
 uint32_t lastUpdate;
-
 
 void setup()
 {
@@ -378,7 +379,7 @@ void setup()
 
   //if using enable pins on a transceiver they need to be set on
 
-  digitalWrite(CAN_A_EN, HIGH);
+  digitalWrite(CAN_A_EN, LOW);
   digitalWrite(CAN_B_EN, LOW);
 
   adc->adc0->setAveraging(16); // set number of averages
@@ -461,6 +462,12 @@ void setup()
 
 void loop()
 {
+  // switch CAN communication to current Pstring
+  selectPstring(currPstring);
+
+  // swith BMS manager to current Pstring
+  bms.setCanNode(currPstring-1); // since array is 0-based subtruct 1 from 1-based strings
+
   while (Can0.available())
   {
     canread();
@@ -840,6 +847,9 @@ void loop()
   }
   if (millis() - looptime > 500)
   {
+    // isolate BMS CAN buss traffic
+    selectPstring(0);
+
     looptime = millis();
 
     // print messages only outside of MENU
@@ -964,9 +974,6 @@ void loop()
     ////
 
     resetwdog();
-
-    /// switch to next Pstring
-    selectPstring(getNextPstring());
   }
   if (millis() - cleartime > 5000)
   {
@@ -1013,8 +1020,10 @@ void loop()
       }
     }
   }
-}
 
+  // select to next Pstring
+  currPstring = getNextPstring();
+}
 
 void alarmupdate()
 {

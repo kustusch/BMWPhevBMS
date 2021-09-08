@@ -36,6 +36,8 @@
 
 #define MAX_MODULE_ADDR     0x3E
 
+#define MAX_CAN_NODES       0x02
+
 #define EEPROM_VERSION      0x11    //update any time EEPROM struct below is changed.
 #define EEPROM_PAGE         0
 
@@ -55,7 +57,7 @@ typedef struct {
   float WarnOff;
   float OverTSetpoint;
   float UnderTSetpoint;
-    uint16_t triptime;
+  uint16_t triptime;
   float ChargeTSetpoint;
   float DisTSetpoint;
   float WarnToff;

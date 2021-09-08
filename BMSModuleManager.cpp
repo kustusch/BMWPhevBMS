@@ -7,9 +7,10 @@ extern EEPROMSettings settings;
 
 BMSModuleManager::BMSModuleManager()
 {
+  currNode = 0;
   for (int i = 1; i <= MAX_MODULE_ADDR; i++) {
-    modules[i].setExists(false);
-    modules[i].setAddress(i);
+    modules[currNode][i].setExists(false);
+    modules[currNode][i].setAddress(i);
   }
   lowestPackVolt = 1000.0f;
   highestPackVolt = 0.0f;
@@ -23,10 +24,10 @@ bool BMSModuleManager::checkcomms()
   int g = 0;
   for (int y = 1; y < 63; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
       g = 1;
-      if (modules[y].isReset())
+      if (modules[currNode][y].isReset())
       {
         //Do nothing as the counter has been reset
       }
@@ -35,7 +36,7 @@ bool BMSModuleManager::checkcomms()
         return false;
       }
     }
-    modules[y].setReset(false);
+    modules[currNode][y].setReset(false);
   }
   if ( g == 0)
   {
@@ -49,9 +50,9 @@ bool BMSModuleManager::checkstatus()
 {
   for (int y = 1; y < 20; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
-      if (modules[y].getError() & 0x2000 >= 0)
+      if (modules[currNode][y].getError() & 0x2000 >= 0)
       {
         return true;
       }
@@ -65,9 +66,9 @@ int BMSModuleManager::seriescells()
   spack = 0;
   for (int y = 1; y < 63; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
-      spack = spack + modules[y].getscells();
+      spack = spack + modules[currNode][y].getscells();
     }
   }
   return spack;
@@ -77,11 +78,11 @@ void BMSModuleManager::clearmodules()
 {
   for (int y = 1; y < 63; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
-      modules[y].clearmodule();
-      modules[y].setExists(false);
-      modules[y].setAddress(y);
+      modules[currNode][y].clearmodule();
+      modules[currNode][y].setExists(false);
+      modules[currNode][y].setAddress(y);
     }
   }
 }
@@ -94,7 +95,7 @@ int BMSModuleManager::getNumModules()
 void BMSModuleManager::decodetemp(CAN_message_t &msg, int debug, int CSC)
 {
   int CMU = (msg.id & 0x00F) + 1;
-  modules[CMU].decodetemp(msg, CSC);
+  modules[currNode][CMU].decodetemp(msg, CSC);
   if (debug == 1 && CMU > 0)
   {
     Serial.println();
@@ -153,9 +154,9 @@ void BMSModuleManager::decodecan(CAN_message_t &msg, int debug)
       Serial.println();
     }
   }
-  modules[CMU].setExists(true);
-  modules[CMU].setReset(true);
-  modules[CMU].decodecan(Id, msg, BalIgnore);
+  modules[currNode][CMU].setExists(true);
+  modules[currNode][CMU].setReset(true);
+  modules[currNode][CMU].decodecan(Id, msg, BalIgnore);
 }
 
 void BMSModuleManager::getAllVoltTemp()
@@ -163,16 +164,16 @@ void BMSModuleManager::getAllVoltTemp()
   packVolt = 0.0f;
   for (int x = 1; x <= MAX_MODULE_ADDR; x++)
   {
-    if (modules[x].isExisting())
+    if (modules[currNode][x].isExisting())
     {
       Logger::debug("");
       Logger::debug("Module %i exists. Reading voltage and temperature values", x);
-      Logger::debug("Module voltage: %f", modules[x].getModuleVoltage());
-      Logger::debug("Lowest Cell V: %f     Highest Cell V: %f", modules[x].getLowCellV(), modules[x].getHighCellV());
-      Logger::debug("Temp1: %f       Temp2: %f", modules[x].getTemperature(0), modules[x].getTemperature(1));
-      packVolt += modules[x].getModuleVoltage();
-      if (modules[x].getLowTemp() < lowestPackTemp) lowestPackTemp = modules[x].getLowTemp();
-      if (modules[x].getHighTemp() > highestPackTemp) highestPackTemp = modules[x].getHighTemp();
+      Logger::debug("Module voltage: %f", modules[currNode][x].getModuleVoltage());
+      Logger::debug("Lowest Cell V: %f     Highest Cell V: %f", modules[currNode][x].getLowCellV(), modules[currNode][x].getHighCellV());
+      Logger::debug("Temp1: %f       Temp2: %f", modules[currNode][x].getTemperature(0), modules[currNode][x].getTemperature(1));
+      packVolt += modules[currNode][x].getModuleVoltage();
+      if (modules[currNode][x].getLowTemp() < lowestPackTemp) lowestPackTemp = modules[currNode][x].getLowTemp();
+      if (modules[currNode][x].getHighTemp() > highestPackTemp) highestPackTemp = modules[currNode][x].getHighTemp();
     }
   }
 
@@ -196,9 +197,9 @@ float BMSModuleManager::getLowCellVolt()
   LowCellVolt = 5.0;
   for (int x = 1; x <= MAX_MODULE_ADDR; x++)
   {
-    if (modules[x].isExisting())
+    if (modules[currNode][x].isExisting())
     {
-      if (modules[x].getLowCellV() <  LowCellVolt)  LowCellVolt = modules[x].getLowCellV();
+      if (modules[currNode][x].getLowCellV() <  LowCellVolt)  LowCellVolt = modules[currNode][x].getLowCellV();
     }
   }
   return LowCellVolt;
@@ -209,9 +210,9 @@ float BMSModuleManager::getHighCellVolt()
   HighCellVolt = 0.0;
   for (int x = 1; x <= MAX_MODULE_ADDR; x++)
   {
-    if (modules[x].isExisting())
+    if (modules[currNode][x].isExisting())
     {
-      if (modules[x].getHighCellV() >  HighCellVolt)  HighCellVolt = modules[x].getHighCellV();
+      if (modules[currNode][x].getHighCellV() >  HighCellVolt)  HighCellVolt = modules[currNode][x].getHighCellV();
     }
   }
   return HighCellVolt;
@@ -251,11 +252,11 @@ void BMSModuleManager::setSensors(int sensor, float Ignore, int tempoff)
 {
   for (int x = 1; x <= MAX_MODULE_ADDR; x++)
   {
-    if (modules[x].isExisting())
+    if (modules[currNode][x].isExisting())
     {
-      modules[x].settempsensor(sensor);
-      modules[x].setIgnoreCell(Ignore);
-      modules[x].setTempOff(tempoff);
+      modules[currNode][x].settempsensor(sensor);
+      modules[currNode][x].setIgnoreCell(Ignore);
+      modules[currNode][x].setTempOff(tempoff);
     }
   }
 }
@@ -269,19 +270,19 @@ float BMSModuleManager::getAvgTemperature()
   numFoundModules = 0;
   for (int x = 1; x <= MAX_MODULE_ADDR; x++)
   {
-    if (modules[x].isExisting())
+    if (modules[currNode][x].isExisting())
     {
       numFoundModules++;
-      if (modules[x].getAvgTemp() > -70)
+      if (modules[currNode][x].getAvgTemp() > -70)
       {
-        avg += modules[x].getAvgTemp();
-        if (modules[x].getHighTemp() > highTemp)
+        avg += modules[currNode][x].getAvgTemp();
+        if (modules[currNode][x].getHighTemp() > highTemp)
         {
-          highTemp = modules[x].getHighTemp();
+          highTemp = modules[currNode][x].getHighTemp();
         }
-        if (modules[x].getLowTemp() < lowTemp)
+        if (modules[currNode][x].getLowTemp() < lowTemp)
         {
-          lowTemp = modules[x].getLowTemp();
+          lowTemp = modules[currNode][x].getLowTemp();
 
         }
       }
@@ -311,7 +312,7 @@ float BMSModuleManager::getAvgCellVolt()
   float avg = 0.0f;
   for (int x = 1; x <= MAX_MODULE_ADDR; x++)
   {
-    if (modules[x].isExisting()) avg += modules[x].getAverageV();
+    if (modules[currNode][x].isExisting()) avg += modules[currNode][x].getAverageV();
   }
   avg = avg / (float)numFoundModules;
 
@@ -333,17 +334,17 @@ void BMSModuleManager::printPackSummary()
   Logger::console("");
   for (int y = 1; y < 63; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
-      faults = modules[y].getFaults();
-      alerts = modules[y].getAlerts();
-      COV = modules[y].getCOVCells();
-      CUV = modules[y].getCUVCells();
+      faults = modules[currNode][y].getFaults();
+      alerts = modules[currNode][y].getAlerts();
+      COV = modules[currNode][y].getCOVCells();
+      CUV = modules[currNode][y].getCUVCells();
 
       Logger::console("                               Module #%i", y);
 
-      Logger::console("  Voltage: %fV   (%fV-%fV)     Temperatures: (%fC-%fC)", modules[y].getModuleVoltage(),
-                      modules[y].getLowCellV(), modules[y].getHighCellV(), modules[y].getLowTemp(), modules[y].getHighTemp());
+      Logger::console("  Voltage: %fV   (%fV-%fV)     Temperatures: (%fC-%fC)", modules[currNode][y].getModuleVoltage(),
+                      modules[currNode][y].getLowCellV(), modules[currNode][y].getHighCellV(), modules[currNode][y].getLowTemp(), modules[currNode][y].getHighTemp());
       if (faults > 0)
       {
         Logger::console("  MODULE IS FAULTED:");
@@ -447,18 +448,18 @@ void BMSModuleManager::printPackDetails(int digits, int CSCvariant)
   Logger::console("");
   for (int y = 1; y < 63; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
-      faults = modules[y].getFaults();
-      alerts = modules[y].getAlerts();
-      COV = modules[y].getCOVCells();
-      CUV = modules[y].getCUVCells();
+      faults = modules[currNode][y].getFaults();
+      alerts = modules[currNode][y].getAlerts();
+      COV = modules[currNode][y].getCOVCells();
+      CUV = modules[currNode][y].getCUVCells();
 
       SERIALCONSOLE.print("Module #");
       SERIALCONSOLE.print(y);
       if (y < 10) SERIALCONSOLE.print(" ");
       SERIALCONSOLE.print("  ");
-      SERIALCONSOLE.print(modules[y].getModuleVoltage(), digits);
+      SERIALCONSOLE.print(modules[currNode][y].getModuleVoltage(), digits);
       SERIALCONSOLE.print("V");
       for (int i = 0; i < 16; i++)
       {
@@ -466,7 +467,7 @@ void BMSModuleManager::printPackDetails(int digits, int CSCvariant)
         SERIALCONSOLE.print("  Cell");
         SERIALCONSOLE.print(cellNum++);
         SERIALCONSOLE.print(": ");
-        SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
+        SERIALCONSOLE.print(modules[currNode][y].getCellVoltage(i), digits);
         SERIALCONSOLE.print("V");
       }
       /*
@@ -478,7 +479,7 @@ void BMSModuleManager::printPackDetails(int digits, int CSCvariant)
           SERIALCONSOLE.print("  Cell");
           SERIALCONSOLE.print(cellNum++);
           SERIALCONSOLE.print(": ");
-          SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
+          SERIALCONSOLE.print(modules[currNode][y].getCellVoltage(i), digits);
           SERIALCONSOLE.print("V");
         }
         }
@@ -490,7 +491,7 @@ void BMSModuleManager::printPackDetails(int digits, int CSCvariant)
           SERIALCONSOLE.print("  Cell");
           SERIALCONSOLE.print(cellNum++);
           SERIALCONSOLE.print(": ");
-          SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
+          SERIALCONSOLE.print(modules[currNode][y].getCellVoltage(i), digits);
           SERIALCONSOLE.print("V");
         }
         }
@@ -498,14 +499,14 @@ void BMSModuleManager::printPackDetails(int digits, int CSCvariant)
       SERIALCONSOLE.println();
 
       SERIALCONSOLE.print(" Temp 1: ");
-      SERIALCONSOLE.print(modules[y].getTemperature(0));
+      SERIALCONSOLE.print(modules[currNode][y].getTemperature(0));
 
       SERIALCONSOLE.print("C Temp 2: ");
-      SERIALCONSOLE.print(modules[y].getTemperature(1));
+      SERIALCONSOLE.print(modules[currNode][y].getTemperature(1));
       SERIALCONSOLE.print("C Status: 0x");
-      SERIALCONSOLE.print(modules[y].getError(), HEX);
+      SERIALCONSOLE.print(modules[currNode][y].getError(), HEX);
       SERIALCONSOLE.print(" Bal: 0x");
-      SERIALCONSOLE.println(modules[y].getbalstat(), HEX);
+      SERIALCONSOLE.println(modules[currNode][y].getbalstat(), HEX);
 
     }
   }
@@ -515,7 +516,7 @@ void BMSModuleManager::printAllCSV(unsigned long timestamp, float current, int S
 {
   for (int y = 1; y < 63; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
       SERIALCONSOLE.print(timestamp);
       SERIALCONSOLE.print(",");
@@ -527,20 +528,20 @@ void BMSModuleManager::printAllCSV(unsigned long timestamp, float current, int S
       SERIALCONSOLE.print(",");
       for (int i = 0; i < 8; i++)
       {
-        SERIALCONSOLE.print(modules[y].getCellVoltage(i));
+        SERIALCONSOLE.print(modules[currNode][y].getCellVoltage(i));
         SERIALCONSOLE.print(",");
       }
-      SERIALCONSOLE.print(modules[y].getTemperature(0));
+      SERIALCONSOLE.print(modules[currNode][y].getTemperature(0));
       SERIALCONSOLE.print(",");
-      SERIALCONSOLE.print(modules[y].getTemperature(1));
+      SERIALCONSOLE.print(modules[currNode][y].getTemperature(1));
       SERIALCONSOLE.print(",");
-      SERIALCONSOLE.print(modules[y].getTemperature(2));
+      SERIALCONSOLE.print(modules[currNode][y].getTemperature(2));
       SERIALCONSOLE.println();
     }
   }
   for (int y = 1; y < 63; y++)
   {
-    if (modules[y].isExisting())
+    if (modules[currNode][y].isExisting())
     {
       Serial2.print(timestamp);
       Serial2.print(",");
@@ -552,15 +553,21 @@ void BMSModuleManager::printAllCSV(unsigned long timestamp, float current, int S
       Serial2.print(",");
       for (int i = 0; i < 8; i++)
       {
-        Serial2.print(modules[y].getCellVoltage(i));
+        Serial2.print(modules[currNode][y].getCellVoltage(i));
         Serial2.print(",");
       }
-      Serial2.print(modules[y].getTemperature(0));
+      Serial2.print(modules[currNode][y].getTemperature(0));
       Serial2.print(",");
-      Serial2.print(modules[y].getTemperature(1));
+      Serial2.print(modules[currNode][y].getTemperature(1));
       Serial2.print(",");
-      Serial2.print(modules[y].getTemperature(2));
+      Serial2.print(modules[currNode][y].getTemperature(2));
       Serial2.println();
     }
   }
+}
+
+// select current CAN Node for processing
+void BMSModuleManager::setCanNode(int node)
+{
+  currNode = node;
 }

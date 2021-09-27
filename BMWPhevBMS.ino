@@ -270,7 +270,7 @@ void loadSettings()
   settings.socvolt[3] = 90; //Voltage and SOC curve for voltage based SOC calc
   settings.invertcur = 0; //Invert current sensor direction
   settings.cursens = 2;
-  settings.curcan = LemCAB300;
+  settings.curcan = IsaScale;
   settings.voltsoc = 0; //SOC purely voltage based
   settings.Pretime = 5000; //ms of precharge time
   settings.conthold = 50; //holding duty cycle for contactor 0-255
@@ -1512,8 +1512,13 @@ void updateSOC()
     if (settings.cursens == Canbus)
     {
       SERIALCONSOLE.print("CANbus ");
+
+
+      SERIALCONSOLE.print(" ");
+      SERIALCONSOLE.print(voltage1);
+      SERIALCONSOLE.print("V");
     }
-    SERIALCONSOLE.print("  ");
+    SERIALCONSOLE.print(" ");
     SERIALCONSOLE.print(currentact);
     SERIALCONSOLE.print("mA");
     SERIALCONSOLE.print("  ");
@@ -2917,11 +2922,11 @@ void menu()
           SERIALCONSOLE.print("3 - Pack Max Charge Current: ");
           SERIALCONSOLE.print(settings.chargecurrentmax * 0.1);
           SERIALCONSOLE.println("A");
-          SERIALCONSOLE.print("4- Pack End of Charge Current: ");
+          SERIALCONSOLE.print("4 - Pack End of Charge Current: ");
           SERIALCONSOLE.print(settings.chargecurrentend * 0.1);
           SERIALCONSOLE.println("A");
         }
-        SERIALCONSOLE.print("5- Charger Type: ");
+        SERIALCONSOLE.print("5 - Charger Type: ");
         switch (settings.chargertype)
         {
           case 0:
@@ -2949,7 +2954,7 @@ void menu()
         SERIALCONSOLE.println();
         if (settings.chargertype > 0)
         {
-          SERIALCONSOLE.print("6- Charger Can Msg Spd: ");
+          SERIALCONSOLE.print("6 - Charger Can Msg Spd: ");
           SERIALCONSOLE.print(settings.chargerspd);
           SERIALCONSOLE.println("mS");
         }
@@ -3163,7 +3168,7 @@ void menu()
 
         if ( settings.cursens == Canbus)
         {
-          SERIALCONSOLE.print("7 -Can Current Sensor :");
+          SERIALCONSOLE.print("7 - Can Current Sensor :");
           if (settings.curcan == LemCAB300)
           {
             SERIALCONSOLE.println(" LEM CAB300/500 series ");
@@ -3360,19 +3365,23 @@ void canread()
     {
       switch (inMsg.id)
       {
-        case 0x521: //
-          CANmilliamps = rxBuf[5] + (rxBuf[4] << 8) + (rxBuf[3] << 16) + (rxBuf[2] << 24);
+        case 0x521: // Current
+          //CANmilliamps = rxBuf[5] + (rxBuf[4] << 8) + (rxBuf[3] << 16) + (rxBuf[2] << 24);
+          CANmilliamps = ((inMsg.buf[5] << 24) | (inMsg.buf[4] << 16) | (inMsg.buf[3] << 8) | (inMsg.buf[2]));
           if ( settings.cursens == Canbus)
           {
             RawCur = CANmilliamps;
             getcurrent();
           }
           break;
-        case 0x522: //
-          voltage1 = rxBuf[5] + (rxBuf[4] << 8) + (rxBuf[3] << 16) + (rxBuf[2] << 24);
+        case 0x522: // Voltage 1
+          voltage1 = ((inMsg.buf[5] << 24) | (inMsg.buf[4] << 16) | (inMsg.buf[3] << 8) | (inMsg.buf[2])) / 1000;
           break;
-        case 0x523: //
-          voltage2 = rxBuf[5] + (rxBuf[4] << 8) + (rxBuf[3] << 16) + (rxBuf[2] << 24);
+        case 0x523: // Voltage 2
+          voltage2 = ((inMsg.buf[5] << 24) | (inMsg.buf[4] << 16) | (inMsg.buf[3] << 8) | (inMsg.buf[2])) / 1000;
+          break;
+        case 0x524: // Voltage 3
+          voltage3 = ((inMsg.buf[5] << 24) | (inMsg.buf[4] << 16) | (inMsg.buf[3] << 8) | (inMsg.buf[2])) / 1000;
           break;
         default:
           break;

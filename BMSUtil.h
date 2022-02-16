@@ -31,6 +31,8 @@ public:
 
     static void sendData(uint8_t *data, uint8_t dataLen, bool isWrite)
     {
+        //TODO: commented out after changeing #define SERIALBMS to canSerial, verify those functions are not needed
+        /*
         uint8_t orig = data[0];
         uint8_t addrByte = data[0];
         if (isWrite) addrByte |= 1;
@@ -53,11 +55,14 @@ public:
         }
         
         data[0] = orig;
+        */
     }
 
     static int getReply(uint8_t *data, int maxLen)
     { 
         int numBytes = 0; 
+        //TODO: commented out after changeing #define SERIALBMS to canSerial, verify those functions are not needed
+        /*
         if (Logger::isDebug()) SERIALCONSOLE.print("Reply: ");
         while (SERIALBMS.available() && numBytes < maxLen)
         {
@@ -73,6 +78,7 @@ public:
             while (SERIALBMS.available()) SERIALBMS.read();
         }
         if (Logger::isDebug()) SERIALCONSOLE.println();
+        */
         return numBytes;
     }
     
